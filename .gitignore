@@ -1,0 +1,67 @@
+# Build
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.csproj.user
+artifacts/
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# .NET
+project.lock.json
+project.fragment.lock.json
+artifacts/
+**/Properties/launchSettings.json.bak
+
+# Databases & local data
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+App_Data/
+apps/api/uploads/
+apps/api/subclear.dev.db*
+
+# Secrets & env
+.env
+.env.*
+!.env.example
+appsettings.*.local.json
+secrets.json
+
+# Node / Expo
+node_modules/
+.expo/
+.expo-shared/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+npm-debug.*
+yarn-error.log
+.pnpm-debug.log*
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vs/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Logs
+logs/
+*.log
