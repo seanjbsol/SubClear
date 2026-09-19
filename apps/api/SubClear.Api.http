@@ -37,9 +37,16 @@ Content-Type: application/json
 
 {}
 
-### Customer portal (Owner / Admin)
-POST {{host}}/api/billing/portal
+### Review a document (Owner / Admin / Reviewer, Pro)
+POST {{host}}/api/documents/{{documentId}}/review
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{}
+{
+  "decision": "approved",
+  "comment": "EL schedule matches the policy wording."
+}
+
+### Run chase emails (Owner / Admin, Pro)
+POST {{host}}/api/chase-automation/run
+Authorization: Bearer {{token}}

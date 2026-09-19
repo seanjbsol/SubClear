@@ -37,8 +37,14 @@ public class BillingIntegrationTests : IClassFixture<SubClearApiFactory>
         body.Should().NotBeNull();
         body!.ProductCode.Should().Be("SubClear");
         body.Status.Should().Be("trialing");
-        body.Plan.Should().Be("stub");
+        body.Plan.Should().Be("pro");
+        body.PlanName.Should().Contain("Pro");
         body.IsEntitled.Should().BeTrue();
+        body.IsPro.Should().BeTrue();
+        body.HasPortal.Should().BeTrue();
+        body.HasEmailAutomation.Should().BeTrue();
+        body.HasReviewQueue.Should().BeTrue();
+        body.SubcontractorLimit.Should().BeNull();
         body.TenantId.Should().NotBe(Guid.Empty);
     }
 

@@ -20,15 +20,18 @@ public sealed class StubSubscriptionClient : ISubscriptionClient
     {
         var options = _options.CurrentValue;
         var status = string.IsNullOrWhiteSpace(options.StubStatus) ? "trialing" : options.StubStatus.Trim();
-        return Task.FromResult(new EntitlementsResult
+        var plan = string.IsNullOrWhiteSpace(options.StubPlan) ? PlanFeatures.Pro : options.StubPlan.Trim();
+        var isPro = PlanFeatures.IsProPlan(plan);
+        var result = new EntitlementsResult
         {
             ProductCode = options.ProductCode,
             TenantId = tenantId,
             Status = status,
-            Plan = "stub",
-            PlanName = "Stub (local / CI)",
+            Plan = plan,
+            PlanName = isPro ? "SubClear Pro (local / CI)" : "SubClear Starter (local / CI)",
             CurrentPeriodEnd = DateTimeOffset.UtcNow.AddDays(14)
-        });
+        };
+        return Task.FromResult(PlanFeatures.WithLimits(result, options));
     }
 
     public Task UpsertTenantAsync(UpsertTenantRequest request, CancellationToken cancellationToken = default)

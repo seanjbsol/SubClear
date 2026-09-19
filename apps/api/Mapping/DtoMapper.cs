@@ -40,6 +40,10 @@ public static class DtoMapper
         FileSizeBytes = doc.FileSizeBytes,
         Notes = doc.Notes,
         IsManuallyExpired = doc.IsManuallyExpired,
+        ReviewStatus = doc.ReviewStatus,
+        ReviewComment = doc.ReviewComment,
+        ReviewedByName = doc.ReviewedBy?.FullName,
+        ReviewedAt = doc.ReviewedAt,
         Light = ComplianceCalculator.LightForDocument(doc, today)
     };
 
@@ -51,6 +55,7 @@ public static class DtoMapper
         ChaseDate = log.ChaseDate,
         Note = log.Note,
         Outcome = log.Outcome,
+        IsAutomated = log.IsAutomated,
         CreatedByName = log.CreatedBy?.FullName ?? string.Empty,
         CreatedAt = log.CreatedAt
     };
@@ -67,7 +72,9 @@ public static class DtoMapper
                 ExpiryDate = s.ExpiryDate,
                 Missing = s.Missing,
                 Expired = s.Expired,
-                DocumentId = s.DocumentId
+                DocumentId = s.DocumentId,
+                ReviewStatus = s.ReviewStatus,
+                ReviewComment = s.ReviewComment
             })
             .ToList();
 

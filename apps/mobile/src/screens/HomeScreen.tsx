@@ -59,7 +59,7 @@ export function HomeScreen({ navigation }: Props) {
       </View>
       <View style={styles.row}>
         <Stat label="Compliant" value={data?.compliantCount} tone="green" />
-        <Stat label="Chase queue" value={data?.chaseQueueCount} tone="navy" />
+        <Stat label="Awaiting review" value={data?.pendingReviewCount} tone="navy" />
       </View>
 
       <Text style={styles.section}>Needs attention</Text>

@@ -19,4 +19,17 @@ public class EntitlementsResultTests
         EntitlementsResult.IsActiveOrTrialing(status).Should().Be(expected);
         new EntitlementsResult { Status = status ?? string.Empty }.IsEntitled.Should().Be(expected);
     }
+
+    [Theory]
+    [InlineData("pro", true)]
+    [InlineData("subclear-pro", true)]
+    [InlineData("stub", true)]
+    [InlineData("starter", false)]
+    [InlineData("", false)]
+    public void IsProPlan_maps_qck_plan_codes(string plan, bool expected)
+    {
+        PlanFeatures.IsProPlan(plan).Should().Be(expected);
+        new EntitlementsResult { Status = "active", Plan = plan }.IsPro.Should().Be(expected);
+        new EntitlementsResult { Status = "active", Plan = plan }.HasPortal.Should().Be(expected);
+    }
 }

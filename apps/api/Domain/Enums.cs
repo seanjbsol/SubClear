@@ -5,7 +5,9 @@ public enum MembershipRole
     Owner = 1,
     Admin = 2,
     ContractsManager = 3,
-    Viewer = 4
+    Viewer = 4,
+    /// <summary>Staff reviewer who can approve or reject compliance documents.</summary>
+    Reviewer = 5
 }
 
 public enum SubcontractorStatus
@@ -53,4 +55,25 @@ public enum ProjectStatus
     Mobilising = 1,
     Live = 2,
     Complete = 3
+}
+
+public enum DocumentReviewStatus
+{
+    Pending = 1,
+    Approved = 2,
+    Rejected = 3
+}
+
+public enum EmailKind
+{
+    PortalInvite = 1,
+    DocumentChase = 2,
+    LinkRequest = 3
+}
+
+public enum LinkRequestStatus
+{
+    Pending = 1,
+    Accepted = 2,
+    Declined = 3
 }

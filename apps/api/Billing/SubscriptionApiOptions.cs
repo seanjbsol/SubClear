@@ -22,6 +22,12 @@ public sealed class SubscriptionApiOptions
     /// <summary>Stub entitlement status: active, trialing, canceled, past_due, none.</summary>
     public string StubStatus { get; set; } = "trialing";
 
+    /// <summary>Stub plan code. Development defaults to <c>pro</c>.</summary>
+    public string StubPlan { get; set; } = PlanFeatures.Pro;
+
+    /// <summary>Maximum subcontractors on Starter. Pro is unlimited.</summary>
+    public int StarterSubcontractorLimit { get; set; } = PlanFeatures.DefaultStarterSubcontractorLimit;
+
     /// <summary>Optional public app URL used as default checkout success/cancel and portal return.</summary>
     public string? AppBaseUrl { get; set; }
 }

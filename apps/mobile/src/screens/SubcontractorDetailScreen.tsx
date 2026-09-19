@@ -15,10 +15,11 @@ type DetailNav = {
 type Props = NativeStackScreenProps<DetailNav, 'SubcontractorDetail'>;
 
 export function SubcontractorDetailScreen({ navigation, route }: Props) {
-  const { request, canWrite } = useAuth();
+  const { request, canWrite, entitlements } = useAuth();
   const [detail, setDetail] = useState<SubcontractorDetail | null>(null);
   const [pack, setPack] = useState<PackDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [inviteBusy, setInviteBusy] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -40,6 +41,24 @@ export function SubcontractorDetailScreen({ navigation, route }: Props) {
       void load();
     }, [load])
   );
+
+  const sendInvite = async () => {
+    if (!detail) {
+      return;
+    }
+    setInviteBusy(true);
+    try {
+      const invite = await request<{ portalUrl?: string }>(`/api/subcontractors/${detail.id}/portal-invites`, {
+        method: 'POST',
+        body: { email: detail.email }
+      });
+      Alert.alert('Portal invite sent', invite.portalUrl ?? 'A private upload link has been emailed.');
+    } catch (err) {
+      Alert.alert('Could not send invite', err instanceof Error ? err.message : 'Try again.');
+    } finally {
+      setInviteBusy(false);
+    }
+  };
 
   const markExpired = async (documentId: string) => {
     try {
@@ -76,7 +95,15 @@ export function SubcontractorDetailScreen({ navigation, route }: Props) {
             <View style={{ flex: 1 }}>
               <Text style={styles.rowTitle}>{item.label}</Text>
               <Text style={styles.meta}>
-                {item.missing ? 'Missing' : item.expired ? 'Expired' : `Expires ${formatUkDate(item.expiryDate)}`}
+                {item.missing
+                  ? 'Missing'
+                  : item.expired
+                    ? 'Expired'
+                    : item.reviewStatus === 'pending'
+                      ? 'Awaiting review'
+                      : item.reviewStatus === 'rejected'
+                        ? `Rejected${item.reviewComment ? ` — ${item.reviewComment}` : ''}`
+                        : `Expires ${formatUkDate(item.expiryDate)}`}
               </Text>
             </View>
             <TrafficLight light={item.light} />
@@ -85,12 +112,23 @@ export function SubcontractorDetailScreen({ navigation, route }: Props) {
 
       <View style={styles.actions}>
         {canWrite ? (
-          <Pressable
-            style={styles.button}
-            onPress={() => navigation.navigate('AddDocument', { subcontractorId: detail.id, name: detail.name })}
-          >
-            <Text style={styles.buttonText}>Add document</Text>
-          </Pressable>
+          <>
+            <Pressable
+              style={styles.button}
+              onPress={() => navigation.navigate('AddDocument', { subcontractorId: detail.id, name: detail.name })}
+            >
+              <Text style={styles.buttonText}>Add document</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.secondary, inviteBusy && styles.disabled]}
+              disabled={inviteBusy}
+              onPress={() => void sendInvite()}
+            >
+              <Text style={styles.secondaryText}>
+                {inviteBusy ? 'Sending…' : entitlements?.hasPortal ? 'Email portal link' : 'Email portal link (Pro)'}
+              </Text>
+            </Pressable>
+          </>
         ) : null}
       </View>
 
@@ -104,7 +142,9 @@ export function SubcontractorDetailScreen({ navigation, route }: Props) {
           <Text style={styles.meta}>
             {doc.typeLabel} · {doc.isManuallyExpired ? 'Marked expired' : `Expiry ${formatUkDate(doc.expiryDate)}`}
             {doc.fileName ? ` · ${doc.fileName}` : ''}
+            {` · ${doc.reviewStatus === 'approved' ? 'Approved' : doc.reviewStatus === 'rejected' ? 'Rejected' : 'Awaiting review'}`}
           </Text>
+          {doc.reviewComment ? <Text style={styles.meta}>{doc.reviewComment}</Text> : null}
           {canWrite && !doc.isManuallyExpired ? (
             <Pressable onPress={() => void markExpired(doc.id)}>
               <Text style={styles.link}>Mark expired</Text>
@@ -121,10 +161,10 @@ export function SubcontractorDetailScreen({ navigation, route }: Props) {
             {formatUkDate(chase.chaseDate)} · {chaseOutcomes.find((o) => o.value === chase.outcome)?.label ?? chase.outcome}
           </Text>
           <Text style={styles.meta}>{chase.note}</Text>
-          <Text style={styles.meta}>Logged by {chase.createdByName}</Text>
+          <Text style={styles.meta}>Logged by {chase.isAutomated ? 'SubClear (automated)' : chase.createdByName}</Text>
         </View>
       ))}
-      {detail.recentChases.length === 0 ? <Text style={styles.meta}>No chase notes yet. Email automation is out of scope for MVP — log the chase here.</Text> : null}
+      {detail.recentChases.length === 0 ? <Text style={styles.meta}>No chase notes yet. Log a call, or use Pro automated chases.</Text> : null}
     </ScrollView>
   );
 }
@@ -152,6 +192,9 @@ const styles = StyleSheet.create({
   actions: { marginTop: 12 },
   button: { backgroundColor: colours.navy, borderRadius: 10, padding: 12, alignItems: 'center' },
   buttonText: { color: colours.white, fontWeight: '700' },
+  secondary: { marginTop: 8, backgroundColor: colours.white, borderRadius: 10, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: colours.navy },
+  secondaryText: { color: colours.navy, fontWeight: '700' },
+  disabled: { opacity: 0.6 },
   link: { color: colours.red, fontWeight: '700', marginTop: 8 },
   error: { padding: 20, color: colours.muted }
 });

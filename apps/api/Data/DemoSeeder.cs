@@ -12,6 +12,7 @@ public static class DemoIds
     public static readonly Guid HumberOwnerId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2");
     public static readonly Guid HumberContractsId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3");
     public static readonly Guid HumberViewerId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4");
+    public static readonly Guid HumberReviewerId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa5");
     public static readonly Guid NorthernOwnerId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2");
 }
 
@@ -21,10 +22,37 @@ public static class DemoSeeder
     public const string HumberOwnerEmail = "owner@demo.subclear.uk";
     public const string HumberContractsEmail = "contracts@demo.subclear.uk";
     public const string HumberViewerEmail = "viewer@demo.subclear.uk";
+    public const string HumberReviewerEmail = "reviewer@demo.subclear.uk";
     public const string NorthernOwnerEmail = "owner@northern.demo.subclear.uk";
 
     public static async Task SeedAsync(AppDbContext db, IPasswordHasher<UserAccount> hasher)
     {
+        if (!await db.NetworkListings.AnyAsync())
+        {
+            db.NetworkListings.AddRange(
+                new NetworkListing
+                {
+                    Id = Guid.Parse("cccccccc-cccc-cccc-cccc-ccccccccccc1"),
+                    AnonymisedName = "Scaffolding contractor",
+                    Trade = "Scaffolding",
+                    Region = "Yorkshire and the Humber",
+                    VerifiedAt = DateTimeOffset.UtcNow.AddMonths(-2),
+                    SourceTenantId = Guid.Parse("cccccccc-cccc-cccc-cccc-ccccccccccc0"),
+                    SourceSubcontractorId = Guid.Parse("cccccccc-cccc-cccc-cccc-ccccccccccc2")
+                },
+                new NetworkListing
+                {
+                    Id = Guid.Parse("cccccccc-cccc-cccc-cccc-ccccccccccc3"),
+                    AnonymisedName = "Groundworks contractor",
+                    Trade = "Groundworks",
+                    Region = "East Midlands",
+                    VerifiedAt = DateTimeOffset.UtcNow.AddMonths(-1),
+                    SourceTenantId = Guid.Parse("cccccccc-cccc-cccc-cccc-ccccccccccc0"),
+                    SourceSubcontractorId = Guid.Parse("cccccccc-cccc-cccc-cccc-ccccccccccc4")
+                });
+            await db.SaveChangesAsync();
+        }
+
         if (await db.Tenants.AnyAsync(t => t.Id == DemoIds.HumberTenantId))
         {
             return;
@@ -51,15 +79,23 @@ public static class DemoSeeder
         var owner = User(DemoIds.HumberOwnerId, HumberOwnerEmail, "Sarah Keane", hasher, now);
         var contracts = User(DemoIds.HumberContractsId, HumberContractsEmail, "Tom Ellis", hasher, now);
         var viewer = User(DemoIds.HumberViewerId, HumberViewerEmail, "Priya Shah", hasher, now);
+        var reviewer = User(DemoIds.HumberReviewerId, HumberReviewerEmail, "Maya Chen", hasher, now);
         var northernOwner = User(DemoIds.NorthernOwnerId, NorthernOwnerEmail, "James Okafor", hasher, now);
 
         db.Tenants.AddRange(humber, northern);
-        db.Users.AddRange(owner, contracts, viewer, northernOwner);
+        db.Users.AddRange(owner, contracts, viewer, reviewer, northernOwner);
         db.Memberships.AddRange(
             Member(humber.Id, owner.Id, MembershipRole.Owner, now),
             Member(humber.Id, contracts.Id, MembershipRole.ContractsManager, now),
             Member(humber.Id, viewer.Id, MembershipRole.Viewer, now),
+            Member(humber.Id, reviewer.Id, MembershipRole.Reviewer, now),
             Member(northern.Id, northernOwner.Id, MembershipRole.Owner, now));
+        db.TenantSettings.Add(new TenantSettings
+        {
+            TenantId = humber.Id,
+            ChaseAutomationEnabled = true,
+            ChaseCadenceDays = 7
+        });
 
         var riverside = Sub("Riverside Scaffolding Ltd", "Claire Dunn", "claire@riversidescaffolding.example", "01472 500100", SubcontractorStatus.Active, now, humber.Id);
         var steel = Sub("Grimsby Steel Erectors Ltd", "Mark Hewitt", "mark@grimbysteel.example", "01472 500200", SubcontractorStatus.Active, now, humber.Id);
@@ -80,11 +116,12 @@ public static class DemoSeeder
         // Red — employers' liability expired last month.
         AddPack(db, plant, today.AddMonths(-1), today.AddMonths(6), today.AddMonths(6), today.AddMonths(4), today.AddMonths(2), now, humber.Id);
 
-        // Red — missing SSIP and RAMS.
+        // Red — missing RAMS. SSIP uploaded via portal, awaiting expert review.
         db.Documents.AddRange(
             Doc(ground, DocumentType.EmployersLiability, "EL certificate", today.AddMonths(8), now, humber.Id),
             Doc(ground, DocumentType.PublicLiability, "PL £10m", today.AddMonths(8), now, humber.Id),
-            Doc(ground, DocumentType.ProfessionalIndemnity, "PI £2m", today.AddMonths(8), now, humber.Id));
+            Doc(ground, DocumentType.ProfessionalIndemnity, "PI £2m", today.AddMonths(8), now, humber.Id),
+            PendingDoc(ground, DocumentType.Ssip, "SSIP / SafeContractor (awaiting review)", today.AddMonths(10), now, humber.Id));
 
         // Green.
         AddPack(db, electrical, today.AddMonths(12), today.AddMonths(12), today.AddMonths(12), today.AddMonths(10), today.AddMonths(9), now, humber.Id);
@@ -241,9 +278,25 @@ public static class DemoSeeder
         FileName = $"{type}-{sub.Name.Replace(' ', '-')}.pdf",
         ContentType = "application/pdf",
         FileSizeBytes = 128_000,
+        ReviewStatus = DocumentReviewStatus.Approved,
+        ReviewedAt = now,
         CreatedAt = now,
         UpdatedAt = now
     };
+
+    private static ComplianceDocument PendingDoc(
+        Subcontractor sub,
+        DocumentType type,
+        string title,
+        DateOnly expiry,
+        DateTimeOffset now,
+        Guid tenantId)
+    {
+        var doc = Doc(sub, type, title, expiry, now, tenantId);
+        doc.ReviewStatus = DocumentReviewStatus.Pending;
+        doc.ReviewedAt = null;
+        return doc;
+    }
 
     private static ProjectSubcontractor Link(Project project, Subcontractor sub, Guid tenantId, DateTimeOffset now) => new()
     {

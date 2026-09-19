@@ -10,7 +10,9 @@ public sealed record DocumentTypeStatus(
     DateOnly? ExpiryDate,
     bool Missing,
     bool Expired,
-    Guid? DocumentId);
+    Guid? DocumentId,
+    DocumentReviewStatus? ReviewStatus = null,
+    string? ReviewComment = null);
 
 public static class ComplianceCalculator
 {
@@ -74,18 +76,42 @@ public static class ComplianceCalculator
         DateOnly today)
     {
         var effective = documents
-            .Where(d => d.Type == type && !d.IsManuallyExpired)
+            .Where(d => d.Type == type && !d.IsManuallyExpired && d.ReviewStatus != DocumentReviewStatus.Rejected)
             .OrderByDescending(d => d.ExpiryDate ?? DateOnly.MinValue)
             .FirstOrDefault();
 
         if (effective is null)
         {
-            var anyExpired = documents.Any(d => d.Type == type);
+            var rejected = documents
+                .Where(d => d.Type == type && d.ReviewStatus == DocumentReviewStatus.Rejected)
+                .OrderByDescending(d => d.ReviewedAt ?? d.UpdatedAt)
+                .FirstOrDefault();
             var light = required ? ComplianceLight.Red : ComplianceLight.Green;
+            if (rejected is not null)
+            {
+                return new DocumentTypeStatus(
+                    type,
+                    LabelFor(type),
+                    required,
+                    light,
+                    rejected.ExpiryDate,
+                    Missing: false,
+                    Expired: true,
+                    rejected.Id,
+                    rejected.ReviewStatus,
+                    rejected.ReviewComment);
+            }
+
+            var anyExpired = documents.Any(d => d.Type == type);
             return new DocumentTypeStatus(type, LabelFor(type), required, light, null, Missing: !anyExpired, Expired: anyExpired, null);
         }
 
         var lightForDoc = LightForDocument(effective, today);
+        if (effective.ReviewStatus == DocumentReviewStatus.Pending && lightForDoc == ComplianceLight.Green)
+        {
+            lightForDoc = ComplianceLight.Amber;
+        }
+
         var expired = lightForDoc == ComplianceLight.Red && effective.ExpiryDate < today;
         return new DocumentTypeStatus(
             type,
@@ -95,7 +121,9 @@ public static class ComplianceCalculator
             effective.ExpiryDate,
             Missing: false,
             Expired: expired || effective.IsManuallyExpired,
-            effective.Id);
+            effective.Id,
+            effective.ReviewStatus,
+            effective.ReviewComment);
     }
 
     public static ComplianceLight LightForDocument(ComplianceDocument document, DateOnly today)

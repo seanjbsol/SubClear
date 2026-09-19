@@ -1,15 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../AuthContext';
 import { API_URL } from '../api';
 import { colours } from '../theme';
-import type { BillingSessionDto, EntitlementsDto } from '../types';
+import type { BillingSessionDto, ChaseSettingsDto, EntitlementsDto } from '../types';
 
 const roleLabels: Record<string, string> = {
   owner: 'Owner',
   admin: 'Admin',
   contractsManager: 'Contracts manager',
-  viewer: 'Viewer'
+  viewer: 'Viewer',
+  reviewer: 'Reviewer'
 };
 
 function statusLabel(status: string): string {
@@ -44,8 +45,9 @@ function formatPeriodEnd(iso?: string | null): string {
 }
 
 export function SettingsScreen() {
-  const { user, logout, request } = useAuth();
-  const [entitlements, setEntitlements] = useState<EntitlementsDto | null>(null);
+  const { user, logout, request, entitlements: cached } = useAuth();
+  const [entitlements, setEntitlements] = useState<EntitlementsDto | null>(cached);
+  const [chase, setChase] = useState<ChaseSettingsDto | null>(null);
   const [billingError, setBillingError] = useState<string | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
   const canManageBilling = user?.role === 'owner' || user?.role === 'admin';
@@ -55,6 +57,11 @@ export function SettingsScreen() {
     try {
       const data = await request<EntitlementsDto>('/api/billing/entitlements');
       setEntitlements(data);
+      try {
+        setChase(await request<ChaseSettingsDto>('/api/chase-automation'));
+      } catch {
+        setChase(null);
+      }
     } catch (error) {
       setBillingError(error instanceof Error ? error.message : 'Could not load billing status.');
     }
@@ -112,6 +119,12 @@ export function SettingsScreen() {
             </Text>
             <Text style={styles.label}>Current period end</Text>
             <Text style={styles.meta}>{formatPeriodEnd(entitlements.currentPeriodEnd)}</Text>
+            <Text style={styles.label}>Included</Text>
+            <Text style={styles.meta}>
+              {entitlements.isPro
+                ? 'Pro: portal invites, automated chases, expert review.'
+                : `Starter: manual chase log, up to ${entitlements.subcontractorLimit ?? 15} subcontractors. Upgrade for portal, automation and review.`}
+            </Text>
           </>
         ) : billingError ? (
           <Text style={styles.alertText}>{billingError}</Text>
@@ -132,6 +145,32 @@ export function SettingsScreen() {
         ) : (
           <Text style={styles.meta}>Ask an Owner or Admin to manage billing for this organisation.</Text>
         )}
+      </View>
+      <View style={styles.card}>
+        <Text style={styles.value}>Document chases</Text>
+        <Text style={styles.meta}>
+          {chase
+            ? `Cadence every ${chase.cadenceDays} days. Automation ${chase.automationEnabled ? 'on' : 'off'}.`
+            : 'Manual chase log is included on Starter. Automated emails are Pro.'}
+        </Text>
+        {canManageBilling && entitlements?.hasEmailAutomation ? (
+          <Pressable
+            style={[styles.button, styles.secondary]}
+            onPress={() => {
+              void (async () => {
+                try {
+                  await request('/api/chase-automation/run', { method: 'POST' });
+                  Alert.alert('Chase job', 'Due reminders have been sent where documents are missing or expired.');
+                  await loadEntitlements();
+                } catch (error) {
+                  setBillingError(error instanceof Error ? error.message : 'Could not run chases.');
+                }
+              })();
+            }}
+          >
+            <Text style={styles.secondaryText}>Run chase emails now</Text>
+          </Pressable>
+        ) : null}
       </View>
       <View style={styles.card}>
         <Text style={styles.value}>Tenant isolation</Text>

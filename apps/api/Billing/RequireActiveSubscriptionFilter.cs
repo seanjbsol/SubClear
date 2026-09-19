@@ -48,6 +48,8 @@ public sealed class RequireActiveSubscriptionFilter : IAsyncActionFilter
             return;
         }
 
+        context.HttpContext.Items[EntitlementsHttpContext.ItemKey] = entitlements;
+
         if (!entitlements.IsEntitled)
         {
             context.Result = Problem(

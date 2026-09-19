@@ -8,8 +8,17 @@ public sealed class EntitlementsResult
     public string? Plan { get; init; }
     public string? PlanName { get; init; }
     public DateTimeOffset? CurrentPeriodEnd { get; init; }
+    public int? SubcontractorLimit { get; init; }
 
     public bool IsEntitled => IsActiveOrTrialing(Status);
+
+    public bool IsPro => PlanFeatures.IsProPlan(Plan);
+
+    public bool HasPortal => IsEntitled && IsPro;
+
+    public bool HasEmailAutomation => IsEntitled && IsPro;
+
+    public bool HasReviewQueue => IsEntitled && IsPro;
 
     public static bool IsActiveOrTrialing(string? status)
     {
