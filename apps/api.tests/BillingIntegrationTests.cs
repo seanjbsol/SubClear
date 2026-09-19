@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using SubClear.Api.Contracts;
 using SubClear.Api.Data;
@@ -75,19 +76,7 @@ public class BillingIntegrationTests : IClassFixture<SubClearApiFactory>
     [Fact]
     public async Task Inactive_stub_subscription_returns_402_on_dashboard()
     {
-        using var factory = _factory.WithWebHostBuilder(builder =>
-        {
-            builder.UseEnvironment("Development");
-            builder.ConfigureAppConfiguration((_, config) =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["SubscriptionApi:UseStub"] = "true",
-                    ["SubscriptionApi:StubStatus"] = "canceled"
-                });
-            });
-        });
-
+        await using var factory = new CanceledSubscriptionApiFactory();
         var client = factory.CreateClient();
         var login = await client.PostAsJsonAsync("/api/auth/login", new
         {
@@ -139,5 +128,21 @@ public class BillingIntegrationTests : IClassFixture<SubClearApiFactory>
         auth.Should().NotBeNull();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth!.Token);
         return client;
+    }
+}
+
+public sealed class CanceledSubscriptionApiFactory : SubClearApiFactory
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+        builder.ConfigureAppConfiguration((_, config) =>
+        {
+            config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["SubscriptionApi:UseStub"] = "true",
+                ["SubscriptionApi:StubStatus"] = "canceled"
+            });
+        });
     }
 }

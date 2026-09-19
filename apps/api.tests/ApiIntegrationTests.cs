@@ -12,7 +12,7 @@ using SubClear.Api.Domain;
 
 namespace SubClear.Api.Tests;
 
-public sealed class SubClearApiFactory : WebApplicationFactory<Program>
+public class SubClearApiFactory : WebApplicationFactory<Program>
 {
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"subclear-tests-{Guid.NewGuid():N}.db");
 
