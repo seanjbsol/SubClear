@@ -10,6 +10,9 @@ WORKDIR /app
 ENV ASPNETCORE_URLS=http://+:8080
 ENV Database__Provider=Sqlite
 ENV Database__ConnectionString=Data Source=/app/data/subclear.db
+# Required in Production. Supply at run time, e.g. -e Jwt__Key=...
+ENV Jwt__Issuer=SubClear
+ENV Jwt__Audience=SubClear
 EXPOSE 8080
 COPY --from=build /app/publish .
 RUN mkdir -p /app/data

@@ -110,6 +110,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+_ = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<JwtOptions>>().Value;
 
 using (var scope = app.Services.CreateScope())
 {
