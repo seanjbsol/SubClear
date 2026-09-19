@@ -12,7 +12,7 @@ using SubClear.Api.Domain;
 
 namespace SubClear.Api.Tests;
 
-public sealed class SubClearApiFactory : WebApplicationFactory<Program>
+public class SubClearApiFactory : WebApplicationFactory<Program>
 {
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"subclear-tests-{Guid.NewGuid():N}.db");
 
@@ -28,7 +28,10 @@ public sealed class SubClearApiFactory : WebApplicationFactory<Program>
                 ["Jwt:Key"] = "test-key-must-be-at-least-32-characters-long!!",
                 ["Jwt:Issuer"] = "SubClear",
                 ["Jwt:Audience"] = "SubClear",
-                ["Seed:Enabled"] = "true"
+                ["Seed:Enabled"] = "true",
+                ["SubscriptionApi:UseStub"] = "true",
+                ["SubscriptionApi:ProductCode"] = "SubClear",
+                ["SubscriptionApi:StubStatus"] = "trialing"
             });
         });
     }

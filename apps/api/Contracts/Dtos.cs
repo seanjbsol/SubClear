@@ -234,3 +234,35 @@ public sealed class LinkSubcontractorRequest
     [Required]
     public Guid SubcontractorId { get; set; }
 }
+
+public sealed class EntitlementsDto
+{
+    public string ProductCode { get; set; } = string.Empty;
+    public Guid TenantId { get; set; }
+    public string Status { get; set; } = "none";
+    public string? Plan { get; set; }
+    public string? PlanName { get; set; }
+    public DateTimeOffset? CurrentPeriodEnd { get; set; }
+    public bool IsEntitled { get; set; }
+}
+
+public sealed class BillingCheckoutRequest
+{
+    [Url]
+    public string? SuccessUrl { get; set; }
+
+    [Url]
+    public string? CancelUrl { get; set; }
+}
+
+public sealed class BillingPortalRequest
+{
+    [Url]
+    public string? ReturnUrl { get; set; }
+}
+
+public sealed class BillingSessionDto
+{
+    public string Url { get; set; } = string.Empty;
+    public string? SessionId { get; set; }
+}

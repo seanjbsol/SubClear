@@ -119,3 +119,18 @@ export type PackDto = {
   overall: ComplianceLight;
   items: PackItem[];
 };
+
+export type EntitlementsDto = {
+  productCode: string;
+  tenantId: string;
+  status: string;
+  plan?: string | null;
+  planName?: string | null;
+  currentPeriodEnd?: string | null;
+  isEntitled: boolean;
+};
+
+export type BillingSessionDto = {
+  url: string;
+  sessionId?: string | null;
+};

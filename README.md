@@ -8,7 +8,7 @@ Contracts managers currently chase EL/PL/PI, SSIP certificates and RAMS over spr
 
 | Path | Stack |
 | --- | --- |
-| `/apps/api` | ASP.NET Core 8 Web API, EF Core, JWT |
+| `/apps/api` | ASP.NET Core 10 Web API, EF Core 10, JWT |
 | `/apps/mobile` | React Native (Expo managed) |
 | `/apps/api.tests` | xUnit integration and unit tests |
 | `SubClear.sln` | Solution |
@@ -17,7 +17,7 @@ Contracts managers currently chase EL/PL/PI, SSIP certificates and RAMS over spr
 
 ### API
 
-Requires the .NET 8 SDK.
+Requires the .NET 10 SDK (LTS, TFM `net10.0`).
 
 ```bash
 cd apps/api
@@ -129,8 +129,46 @@ SQLite and SQL Server migrations are not interchangeable (types, limits). Keep p
 | GET | `/api/chase-queue` | Red + amber subs. |
 | GET | `/api/dashboard` | Counts + attention list. |
 | GET/POST | `/api/projects` | Optional project links. |
+| GET | `/api/billing/entitlements` | Plan / status from Qck (no Stripe). |
+| POST | `/api/billing/checkout` | Owner/Admin. Proxies to a Qck checkout session. |
+| POST | `/api/billing/portal` | Owner/Admin. Proxies to the Qck customer portal. |
 
 Write endpoints require Owner, Admin, or ContractsManager. CORS is open in this scaffold; restrict origins before production.
+
+## Billing (QckApp Subscription API)
+
+SubClear does **not** call Stripe. Billing is a small `SubscriptionClient` (`HttpClient`) against the central **QckApp Subscription API**.
+
+| Setting | Purpose |
+| --- | --- |
+| `SubscriptionApi:BaseUrl` | Qck base URL, no trailing slash |
+| `SubscriptionApi:ApiKey` | Sent as the `X-Api-Key` header |
+| `SubscriptionApi:ProductCode` | Always `SubClear` |
+| `SubscriptionApi:UseStub` | `true` for CI/tests/local without Qck |
+| `SubscriptionApi:AppBaseUrl` | Optional public app origin for checkout success/cancel and portal return |
+
+Live calls (never from the mobile app):
+
+- `PUT/POST {BaseUrl}/api/v1/tenants` — upsert name, owner email, `externalTenantId` (the SubClear tenant id) on register and before checkout
+- `GET {BaseUrl}/api/v1/entitlements/SubClear/{tenantId}`
+- `POST {BaseUrl}/api/v1/checkout/sessions`
+- `POST {BaseUrl}/api/v1/portal/sessions`
+
+Authenticated tenant routes that need billing (dashboard, subcontractors, documents, chase, projects) check entitlements. If the status is not `active` or `trialing`, the API returns **402** with `checkoutHint: "POST /api/billing/checkout"`. `/health`, auth, `/api/me`, and `/api/billing/*` stay reachable so an organisation can still sign in and upgrade.
+
+### Stub mode
+
+Set `SubscriptionApi:UseStub=true` (the Development default). No Qck HTTP calls are made:
+
+- Entitlements default to `trialing` / plan `stub` (override with `SubscriptionApi:StubStatus`)
+- Checkout and portal return `https://billing.stub.qckapp.local/...` URLs
+- Tenant upsert is a no-op log
+
+Use this in CI and `dotnet test`. Do not enable stub in production.
+
+Production requires `SubscriptionApi__BaseUrl` and `SubscriptionApi__ApiKey` (plus `Jwt__Key`). Never commit real keys.
+
+On mobile, Settings loads `GET /api/billing/entitlements` and Owners/Admins open **Manage billing** or **Upgrade** with `Linking.openURL` on the proxied Qck URL.
 
 ## Tests
 
@@ -138,11 +176,11 @@ Write endpoints require Owner, Admin, or ContractsManager. CORS is open in this 
 dotnet test SubClear.sln
 ```
 
-Covers traffic-light rules, register → tenant, sub/document CRUD, mark-expired, pack, chase queue, viewer 403, and second-tenant isolation.
+Covers traffic-light rules, register → tenant, sub/document CRUD, mark-expired, pack, chase queue, viewer 403, second-tenant isolation, stub billing entitlements/checkout/portal, and 402 when the stub subscription is not active.
 
 ## Production notes
 
-- No secrets belong in git. Use environment variables / a secret store for `Jwt__Key` and SQL credentials.
+- No secrets belong in git. Use environment variables / a secret store for `Jwt__Key`, `SubscriptionApi__ApiKey`, and SQL credentials.
 - Swap SQLite to SQL Server as above; add migrations; turn off `Seed:Enabled` in production or replace the demo seeder.
 - File **content** is not stored in MVP — only metadata (name, content type, size). Plug in blob storage later via `StorageKey`.
 - Email chase automation is explicitly out of MVP; the chase log is the system of record for what was asked and when.
