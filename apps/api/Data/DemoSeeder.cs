@@ -53,7 +53,8 @@ public static class DemoSeeder
             await db.SaveChangesAsync();
         }
 
-        if (await db.Tenants.AnyAsync(t => t.Id == DemoIds.HumberTenantId))
+        if (await db.Tenants.AnyAsync(t => t.Id == DemoIds.HumberTenantId)
+            || await db.Users.AnyAsync(u => u.Id == DemoIds.HumberOwnerId || u.Email == HumberOwnerEmail))
         {
             return;
         }
@@ -197,7 +198,20 @@ public static class DemoSeeder
             Link(tankFarm, plant, humber.Id, now),
             Link(tankFarm, electrical, humber.Id, now));
 
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            db.ChangeTracker.Clear();
+            if (await db.Tenants.AnyAsync(t => t.Id == DemoIds.HumberTenantId))
+            {
+                return;
+            }
+
+            throw;
+        }
     }
 
     private static UserAccount User(Guid id, string email, string name, IPasswordHasher<UserAccount> hasher, DateTimeOffset now)

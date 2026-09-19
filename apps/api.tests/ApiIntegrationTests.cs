@@ -14,31 +14,40 @@ namespace SubClear.Api.Tests;
 
 public class SubClearApiFactory : WebApplicationFactory<Program>
 {
-    private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"subclear-tests-{Guid.NewGuid():N}.db");
+    protected string DbPath { get; } = Path.Combine(Path.GetTempPath(), $"subclear-tests-{Guid.NewGuid():N}.db");
+
+    protected virtual IReadOnlyDictionary<string, string?> ExtraSettings => new Dictionary<string, string?>();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        var settings = new Dictionary<string, string?>
+        {
+            ["Database:Provider"] = "Sqlite",
+            ["Database:ConnectionString"] = $"Data Source={DbPath}",
+            ["Jwt:Key"] = "test-key-must-be-at-least-32-characters-long!!",
+            ["Jwt:Issuer"] = "SubClear",
+            ["Jwt:Audience"] = "SubClear",
+            ["Seed:Enabled"] = "true",
+            ["SubscriptionApi:UseStub"] = "true",
+            ["SubscriptionApi:ProductCode"] = "SubClear",
+            ["SubscriptionApi:StubStatus"] = "trialing",
+            ["SubscriptionApi:StubPlan"] = "pro",
+            ["Email:Provider"] = "File",
+            ["Email:FileDirectory"] = Path.Combine(Path.GetTempPath(), $"subclear-emails-{Guid.NewGuid():N}"),
+            ["Chase:BackgroundEnabled"] = "false",
+            ["Portal:PublicBaseUrl"] = "https://portal.test.subclear.uk",
+            ["Portal:TokenLifetimeHours"] = "168"
+        };
+        foreach (var pair in ExtraSettings)
+        {
+            settings[pair.Key] = pair.Value;
+        }
+
         builder.UseEnvironment("Development");
+        builder.UseSetting("Database:ConnectionString", $"Data Source={DbPath}");
         builder.ConfigureAppConfiguration((_, config) =>
         {
-            config.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Database:Provider"] = "Sqlite",
-                ["Database:ConnectionString"] = $"Data Source={_dbPath}",
-                ["Jwt:Key"] = "test-key-must-be-at-least-32-characters-long!!",
-                ["Jwt:Issuer"] = "SubClear",
-                ["Jwt:Audience"] = "SubClear",
-                ["Seed:Enabled"] = "true",
-                ["SubscriptionApi:UseStub"] = "true",
-                ["SubscriptionApi:ProductCode"] = "SubClear",
-                ["SubscriptionApi:StubStatus"] = "trialing",
-                ["SubscriptionApi:StubPlan"] = "pro",
-                ["Email:Provider"] = "File",
-                ["Email:FileDirectory"] = Path.Combine(Path.GetTempPath(), $"subclear-emails-{Guid.NewGuid():N}"),
-                ["Chase:BackgroundEnabled"] = "false",
-                ["Portal:PublicBaseUrl"] = "https://portal.test.subclear.uk",
-                ["Portal:TokenLifetimeHours"] = "168"
-            });
+            config.AddInMemoryCollection(settings);
         });
     }
 
@@ -47,9 +56,9 @@ public class SubClearApiFactory : WebApplicationFactory<Program>
         base.Dispose(disposing);
         try
         {
-            File.Delete(_dbPath);
-            File.Delete(_dbPath + "-wal");
-            File.Delete(_dbPath + "-shm");
+            File.Delete(DbPath);
+            File.Delete(DbPath + "-wal");
+            File.Delete(DbPath + "-shm");
         }
         catch
         {

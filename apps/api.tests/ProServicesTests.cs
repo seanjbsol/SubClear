@@ -379,18 +379,11 @@ public class StarterEntitlementTests : IClassFixture<StarterSubscriptionApiFacto
 
 public sealed class StarterSubscriptionApiFactory : SubClearApiFactory
 {
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    protected override IReadOnlyDictionary<string, string?> ExtraSettings => new Dictionary<string, string?>
     {
-        base.ConfigureWebHost(builder);
-        builder.ConfigureAppConfiguration((_, config) =>
-        {
-            config.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["SubscriptionApi:UseStub"] = "true",
-                ["SubscriptionApi:StubStatus"] = "active",
-                ["SubscriptionApi:StubPlan"] = "starter",
-                ["SubscriptionApi:StarterSubcontractorLimit"] = "6"
-            });
-        });
-    }
+        ["SubscriptionApi:UseStub"] = "true",
+        ["SubscriptionApi:StubStatus"] = "active",
+        ["SubscriptionApi:StubPlan"] = "starter",
+        ["SubscriptionApi:StarterSubcontractorLimit"] = "6"
+    };
 }
