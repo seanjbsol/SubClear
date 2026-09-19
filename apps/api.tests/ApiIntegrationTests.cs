@@ -28,7 +28,10 @@ public sealed class SubClearApiFactory : WebApplicationFactory<Program>
                 ["Jwt:Key"] = "test-key-must-be-at-least-32-characters-long!!",
                 ["Jwt:Issuer"] = "SubClear",
                 ["Jwt:Audience"] = "SubClear",
-                ["Seed:Enabled"] = "true"
+                ["Seed:Enabled"] = "true",
+                ["SubscriptionApi:UseStub"] = "true",
+                ["SubscriptionApi:ProductCode"] = "SubClear",
+                ["SubscriptionApi:StubStatus"] = "trialing"
             });
         });
     }

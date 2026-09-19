@@ -25,3 +25,21 @@ Content-Type: application/json
 ### Dashboard
 GET {{host}}/api/dashboard
 Authorization: Bearer {{token}}
+
+### Billing entitlements
+GET {{host}}/api/billing/entitlements
+Authorization: Bearer {{token}}
+
+### Checkout (Owner / Admin)
+POST {{host}}/api/billing/checkout
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{}
+
+### Customer portal (Owner / Admin)
+POST {{host}}/api/billing/portal
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{}

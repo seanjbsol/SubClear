@@ -3,8 +3,10 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.Options;
+using Microsoft.OpenApi;
 using SubClear.Api.Auth;
+using SubClear.Api.Billing;
 using SubClear.Api.Data;
 using SubClear.Api.Domain;
 
@@ -60,6 +62,56 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<ITenantContext, TenantContext>();
 builder.Services.AddSingleton<IPasswordHasher<UserAccount>, PasswordHasher<UserAccount>>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
+builder.Services.AddScoped<RequireActiveSubscriptionFilter>();
+
+builder.Services.AddOptions<SubscriptionApiOptions>()
+    .Bind(builder.Configuration.GetSection(SubscriptionApiOptions.SectionName))
+    .PostConfigure(options =>
+    {
+        if (string.IsNullOrWhiteSpace(options.ProductCode))
+        {
+            options.ProductCode = SubscriptionApiOptions.DefaultProductCode;
+        }
+
+        if (options.UseStub)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(options.BaseUrl) || string.IsNullOrWhiteSpace(options.ApiKey))
+        {
+            if (builder.Environment.IsDevelopment())
+            {
+                options.UseStub = true;
+                return;
+            }
+
+            throw new InvalidOperationException(
+                "SubscriptionApi:BaseUrl and SubscriptionApi:ApiKey must be set when SubscriptionApi:UseStub is false (use SubscriptionApi__BaseUrl and SubscriptionApi__ApiKey).");
+        }
+    });
+
+var useStub = builder.Configuration.GetValue("SubscriptionApi:UseStub", builder.Environment.IsDevelopment());
+if (!useStub
+    && string.IsNullOrWhiteSpace(builder.Configuration["SubscriptionApi:BaseUrl"])
+    && builder.Environment.IsDevelopment())
+{
+    useStub = true;
+}
+
+if (useStub)
+{
+    builder.Services.PostConfigure<SubscriptionApiOptions>(options => options.UseStub = true);
+    builder.Services.AddSingleton<ISubscriptionClient, StubSubscriptionClient>();
+}
+else
+{
+    builder.Services.AddHttpClient<ISubscriptionClient, SubscriptionClient>((sp, http) =>
+    {
+        var options = sp.GetRequiredService<IOptions<SubscriptionApiOptions>>().Value;
+        SubscriptionClient.ConfigureHttpClient(http, options);
+    });
+}
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer();
@@ -72,7 +124,10 @@ builder.Services.AddCors(options =>
         policy.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin());
 });
 
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+    {
+        options.Filters.Add<RequireActiveSubscriptionFilter>();
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
@@ -97,20 +152,15 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "bearer",
         BearerFormat = "JWT"
     });
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-            },
-            Array.Empty<string>()
-        }
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
     });
 });
 
 var app = builder.Build();
-_ = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<JwtOptions>>().Value;
+_ = app.Services.GetRequiredService<IOptions<JwtOptions>>().Value;
+_ = app.Services.GetRequiredService<IOptions<SubscriptionApiOptions>>().Value;
 
 using (var scope = app.Services.CreateScope())
 {

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SubClear.Api.Auth;
+using SubClear.Api.Billing;
 using SubClear.Api.Contracts;
 using SubClear.Api.Data;
 using SubClear.Api.Domain;
@@ -17,17 +18,23 @@ public sealed class AuthController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IPasswordHasher<UserAccount> _hasher;
     private readonly ITokenService _tokens;
+    private readonly ISubscriptionClient _subscriptions;
+    private readonly ILogger<AuthController> _logger;
     private readonly JwtOptions _jwt;
 
     public AuthController(
         AppDbContext db,
         IPasswordHasher<UserAccount> hasher,
         ITokenService tokens,
+        ISubscriptionClient subscriptions,
+        ILogger<AuthController> logger,
         IOptions<JwtOptions> jwt)
     {
         _db = db;
         _hasher = hasher;
         _tokens = tokens;
+        _subscriptions = subscriptions;
+        _logger = logger;
         _jwt = jwt.Value;
     }
 
@@ -73,6 +80,20 @@ public sealed class AuthController : ControllerBase
         _db.Users.Add(user);
         _db.Memberships.Add(membership);
         await _db.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await _subscriptions.UpsertTenantAsync(new UpsertTenantRequest
+            {
+                ExternalTenantId = tenant.Id,
+                Name = tenant.Name,
+                OwnerEmail = user.Email
+            }, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not upsert tenant {TenantId} to Qck Subscription API during register.", tenant.Id);
+        }
 
         return Ok(BuildAuth(user, membership, tenant));
     }
@@ -132,6 +153,7 @@ public sealed class AuthController : ControllerBase
 
 [ApiController]
 [Authorize]
+[SkipSubscriptionCheck]
 [Route("api/me")]
 public sealed class MeController : ControllerBase
 {
