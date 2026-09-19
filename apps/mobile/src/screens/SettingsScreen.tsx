@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../AuthContext';
 import { API_URL } from '../api';
 import { colours } from '../theme';
+import { InlineNotice } from '../ui';
 import type { BillingSessionDto, ChaseSettingsDto, EntitlementsDto } from '../types';
 
 const roleLabels: Record<string, string> = {
@@ -50,6 +51,8 @@ export function SettingsScreen() {
   const [chase, setChase] = useState<ChaseSettingsDto | null>(null);
   const [billingError, setBillingError] = useState<string | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
+  const [chaseNotice, setChaseNotice] = useState<string | null>(null);
+  const [chaseFailed, setChaseFailed] = useState(false);
   const canManageBilling = user?.role === 'owner' || user?.role === 'admin';
 
   const loadEntitlements = useCallback(async () => {
@@ -158,12 +161,15 @@ export function SettingsScreen() {
             style={[styles.button, styles.secondary]}
             onPress={() => {
               void (async () => {
+                setChaseNotice(null);
+                setChaseFailed(false);
                 try {
                   await request('/api/chase-automation/run', { method: 'POST' });
-                  Alert.alert('Chase job', 'Due reminders have been sent where documents are missing or expired.');
+                  setChaseNotice('Due reminders have been sent where documents are missing or expired. Each send is in the email log.');
                   await loadEntitlements();
                 } catch (error) {
-                  setBillingError(error instanceof Error ? error.message : 'Could not run chases.');
+                  setChaseFailed(true);
+                  setChaseNotice(error instanceof Error ? error.message : 'Could not run chases.');
                 }
               })();
             }}
@@ -171,6 +177,7 @@ export function SettingsScreen() {
             <Text style={styles.secondaryText}>Run chase emails now</Text>
           </Pressable>
         ) : null}
+        {chaseNotice ? <InlineNotice tone={chaseFailed ? 'error' : 'info'}>{chaseNotice}</InlineNotice> : null}
       </View>
       <View style={styles.card}>
         <Text style={styles.value}>Tenant isolation</Text>

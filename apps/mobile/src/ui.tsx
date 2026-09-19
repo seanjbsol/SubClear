@@ -46,6 +46,26 @@ export function FieldLabel({ children }: { children: React.ReactNode }) {
   return <Text style={fieldStyles.label}>{children}</Text>;
 }
 
+export function InlineNotice({
+  tone = 'info',
+  children
+}: {
+  tone?: 'info' | 'error';
+  children: React.ReactNode;
+}) {
+  return (
+    <Text style={[noticeStyles.text, tone === 'error' ? noticeStyles.error : noticeStyles.info]} selectable>
+      {children}
+    </Text>
+  );
+}
+
+const noticeStyles = StyleSheet.create({
+  text: { marginTop: 10, lineHeight: 20, fontWeight: '600' },
+  info: { color: colours.navy },
+  error: { color: colours.red }
+});
+
 const fieldStyles = StyleSheet.create({
   label: {
     color: colours.muted,

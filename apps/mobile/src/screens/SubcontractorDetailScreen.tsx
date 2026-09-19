@@ -1,10 +1,10 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../AuthContext';
 import { chaseOutcomes, colours, formatUkDate } from '../theme';
-import { TrafficLight } from '../ui';
+import { InlineNotice, TrafficLight } from '../ui';
 import type { PackDto, SubcontractorDetail } from '../types';
 
 type DetailNav = {
@@ -20,6 +20,9 @@ export function SubcontractorDetailScreen({ navigation, route }: Props) {
   const [pack, setPack] = useState<PackDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteNotice, setInviteNotice] = useState<string | null>(null);
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [inviteFailed, setInviteFailed] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -47,14 +50,23 @@ export function SubcontractorDetailScreen({ navigation, route }: Props) {
       return;
     }
     setInviteBusy(true);
+    setInviteNotice(null);
+    setInviteUrl(null);
+    setInviteFailed(false);
     try {
       const invite = await request<{ portalUrl?: string }>(`/api/subcontractors/${detail.id}/portal-invites`, {
         method: 'POST',
         body: { email: detail.email }
       });
-      Alert.alert('Portal invite sent', invite.portalUrl ?? 'A private upload link has been emailed.');
+      setInviteUrl(invite.portalUrl ?? null);
+      setInviteNotice(
+        invite.portalUrl
+          ? 'Portal invite emailed. The subcontractor can upload without installing the app — open the private link below.'
+          : 'A private upload link has been emailed.'
+      );
     } catch (err) {
-      Alert.alert('Could not send invite', err instanceof Error ? err.message : 'Try again.');
+      setInviteFailed(true);
+      setInviteNotice(err instanceof Error ? err.message : 'Could not send invite.');
     } finally {
       setInviteBusy(false);
     }
@@ -65,7 +77,7 @@ export function SubcontractorDetailScreen({ navigation, route }: Props) {
       await request(`/api/documents/${documentId}/mark-expired`, { method: 'POST' });
       await load();
     } catch (err) {
-      Alert.alert('Could not mark expired', err instanceof Error ? err.message : 'Try again.');
+      setError(err instanceof Error ? err.message : 'Could not mark expired.');
     }
   };
 
@@ -128,6 +140,14 @@ export function SubcontractorDetailScreen({ navigation, route }: Props) {
                 {inviteBusy ? 'Sending…' : entitlements?.hasPortal ? 'Email portal link' : 'Email portal link (Pro)'}
               </Text>
             </Pressable>
+            {inviteNotice ? <InlineNotice tone={inviteFailed ? 'error' : 'info'}>{inviteNotice}</InlineNotice> : null}
+            {inviteUrl ? (
+              <Pressable onPress={() => void Linking.openURL(inviteUrl)}>
+                <Text style={styles.portalUrl} selectable>
+                  {inviteUrl}
+                </Text>
+              </Pressable>
+            ) : null}
           </>
         ) : null}
       </View>
@@ -195,6 +215,7 @@ const styles = StyleSheet.create({
   secondary: { marginTop: 8, backgroundColor: colours.white, borderRadius: 10, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: colours.navy },
   secondaryText: { color: colours.navy, fontWeight: '700' },
   disabled: { opacity: 0.6 },
+  portalUrl: { color: colours.navyMid, marginTop: 8, fontSize: 12, fontWeight: '600' },
   link: { color: colours.red, fontWeight: '700', marginTop: 8 },
   error: { padding: 20, color: colours.muted }
 });

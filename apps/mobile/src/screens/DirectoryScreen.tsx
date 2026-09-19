@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../AuthContext';
@@ -33,34 +33,35 @@ export function DirectoryScreen({ navigation }: Props) {
   );
 
   const linkListing = async (listing: DirectoryListing) => {
+    setError(null);
     try {
       const result = await request<LinkRequestDto>('/api/directory/link-requests', {
         method: 'POST',
         body: { networkListingId: listing.id }
       });
-      Alert.alert('Linked', `${listing.anonymisedName} is now on this register.`);
       if (result.subcontractorId) {
         navigation.navigate('SubcontractorDetail', { id: result.subcontractorId, name: listing.anonymisedName });
       }
     } catch (err) {
-      Alert.alert('Could not link', err instanceof Error ? err.message : 'Try again.');
+      setError(err instanceof Error ? err.message : 'Could not link that company.');
     }
   };
 
   const inviteByEmail = async () => {
+    setError(null);
     try {
+      const companyName = name.trim() || 'Invited subcontractor';
       const result = await request<LinkRequestDto>('/api/directory/link-requests', {
         method: 'POST',
         body: { email: email.trim(), name: name.trim() || undefined }
       });
-      Alert.alert('Invite sent', result.portalUrl ? 'A private upload link has been emailed.' : 'The subcontractor was added.');
       setEmail('');
       setName('');
       if (result.subcontractorId) {
-        navigation.navigate('SubcontractorDetail', { id: result.subcontractorId, name: name.trim() || 'Invited subcontractor' });
+        navigation.navigate('SubcontractorDetail', { id: result.subcontractorId, name: companyName });
       }
     } catch (err) {
-      Alert.alert('Could not invite', err instanceof Error ? err.message : 'Try again.');
+      setError(err instanceof Error ? err.message : 'Could not invite.');
     }
   };
 
