@@ -12,7 +12,7 @@ type Props = NativeStackScreenProps<SubsStackParamList, 'SubcontractorList'>;
 
 export function SubcontractorListScreen({ navigation }: Props) {
   const { request, canWrite } = useAuth();
-  const [rows, setRows] = useState<SubcontractorSummary[]>([]);
+  const [rows, setRows] = useState<SubcontractorSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -40,7 +40,7 @@ export function SubcontractorListScreen({ navigation }: Props) {
       ) : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <FlatList
-        data={rows}
+        data={rows ?? []}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         refreshControl={
@@ -67,7 +67,7 @@ export function SubcontractorListScreen({ navigation }: Props) {
             </Text>
           </Pressable>
         )}
-        ListEmptyComponent={<Text style={styles.empty}>No subcontractors on this register yet.</Text>}
+        ListEmptyComponent={<Text style={styles.empty}>{rows === null ? 'Loading subcontractors…' : 'No subcontractors on this register yet.'}</Text>}
       />
     </View>
   );

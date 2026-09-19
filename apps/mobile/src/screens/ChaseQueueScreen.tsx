@@ -13,7 +13,7 @@ type Props = NativeStackScreenProps<ChaseStackParamList, 'ChaseQueue'>;
 
 export function ChaseQueueScreen({ navigation }: Props) {
   const { request, canWrite } = useAuth();
-  const [rows, setRows] = useState<ChaseQueueItem[]>([]);
+  const [rows, setRows] = useState<ChaseQueueItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [note, setNote] = useState('Requested current certificates before site start.');
@@ -65,7 +65,7 @@ export function ChaseQueueScreen({ navigation }: Props) {
       ) : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <FlatList
-        data={rows}
+        data={rows ?? []}
         keyExtractor={(item) => item.subcontractorId}
         contentContainerStyle={styles.list}
         refreshControl={
@@ -100,7 +100,7 @@ export function ChaseQueueScreen({ navigation }: Props) {
             ) : null}
           </Pressable>
         )}
-        ListEmptyComponent={<Text style={styles.empty}>Chase queue is clear.</Text>}
+        ListEmptyComponent={<Text style={styles.empty}>{rows === null ? 'Loading chase queue…' : 'Chase queue is clear.'}</Text>}
       />
     </View>
   );

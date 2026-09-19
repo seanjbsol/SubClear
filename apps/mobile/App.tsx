@@ -107,7 +107,10 @@ function SignedInTabs() {
         headerShown: false,
         tabBarActiveTintColor: colours.navy,
         tabBarInactiveTintColor: colours.muted,
-        tabBarStyle: { backgroundColor: colours.white, borderTopColor: colours.line }
+        tabBarStyle: { backgroundColor: colours.white, borderTopColor: colours.line, height: 58, paddingBottom: 8, paddingTop: 8 },
+        tabBarIcon: () => null,
+        tabBarIconStyle: { display: 'none', width: 0, height: 0 },
+        tabBarLabelStyle: { fontSize: 13, fontWeight: '700' }
       }}
     >
       <Tabs.Screen name="HomeTab" component={HomeNavigator} options={{ title: 'Home' }} />
