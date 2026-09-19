@@ -1,0 +1,27 @@
+@host = http://localhost:5151
+
+GET {{host}}/health
+
+### Register a tenant (Owner)
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "organisationName": "Example Civils Ltd",
+  "fullName": "Alex Example",
+  "email": "alex@examplecivils.test",
+  "password": "DemoPassword123!"
+}
+
+### Login demo tenant
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "owner@demo.subclear.uk",
+  "password": "DemoPassword123!"
+}
+
+### Dashboard
+GET {{host}}/api/dashboard
+Authorization: Bearer {{token}}
