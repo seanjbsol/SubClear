@@ -139,10 +139,10 @@ export function SettingsScreen() {
           <Pressable
             style={[styles.button, styles.secondary, billingBusy && styles.disabled]}
             disabled={billingBusy}
-            onPress={() => void openBillingUrl(entitlements?.isEntitled ? '/api/billing/portal' : '/api/billing/checkout')}
+            onPress={() => void openBillingUrl(entitlements?.isPro ? '/api/billing/portal' : '/api/billing/checkout')}
           >
             <Text style={styles.secondaryText}>
-              {billingBusy ? 'Opening…' : entitlements?.isEntitled ? 'Manage billing' : 'Upgrade'}
+              {billingBusy ? 'Opening…' : entitlements?.isPro ? 'Manage billing' : 'Upgrade'}
             </Text>
           </Pressable>
         ) : (
@@ -152,9 +152,11 @@ export function SettingsScreen() {
       <View style={styles.card}>
         <Text style={styles.value}>Document chases</Text>
         <Text style={styles.meta}>
-          {chase
-            ? `Cadence every ${chase.cadenceDays} days. Automation ${chase.automationEnabled ? 'on' : 'off'}.`
-            : 'Manual chase log is included on Starter. Automated emails are Pro.'}
+          {entitlements && !entitlements.hasEmailAutomation
+            ? 'Manual chase log is included on Starter. Automated emails are Pro.'
+            : chase
+              ? `Cadence every ${chase.cadenceDays} days. Automation ${chase.automationEnabled ? 'on' : 'off'}.`
+              : 'Manual chase log is included on Starter. Automated emails are Pro.'}
         </Text>
         {canManageBilling && entitlements?.hasEmailAutomation ? (
           <Pressable
