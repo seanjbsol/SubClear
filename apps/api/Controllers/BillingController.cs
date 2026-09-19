@@ -118,7 +118,12 @@ public sealed class BillingController : ControllerBase
         Plan = result.Plan,
         PlanName = result.PlanName,
         CurrentPeriodEnd = result.CurrentPeriodEnd,
-        IsEntitled = result.IsEntitled
+        IsEntitled = result.IsEntitled,
+        IsPro = result.IsPro,
+        HasPortal = result.HasPortal,
+        HasEmailAutomation = result.HasEmailAutomation,
+        HasReviewQueue = result.HasReviewQueue,
+        SubcontractorLimit = result.SubcontractorLimit
     };
 
     private string RequestTenantName() =>

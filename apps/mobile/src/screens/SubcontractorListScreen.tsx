@@ -38,6 +38,9 @@ export function SubcontractorListScreen({ navigation }: Props) {
           <Text style={styles.addText}>Add subcontractor</Text>
         </Pressable>
       ) : null}
+      <Pressable style={styles.network} onPress={() => navigation.navigate('Directory')}>
+        <Text style={styles.networkText}>SubClear network</Text>
+      </Pressable>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <FlatList
         data={rows ?? []}
@@ -77,6 +80,8 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colours.paper },
   add: { margin: 16, marginBottom: 0, backgroundColor: colours.navy, borderRadius: 10, padding: 12, alignItems: 'center' },
   addText: { color: colours.white, fontWeight: '700' },
+  network: { margin: 16, marginBottom: 0, backgroundColor: colours.white, borderRadius: 10, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: colours.navy },
+  networkText: { color: colours.navy, fontWeight: '700' },
   list: { padding: 16, paddingBottom: 40 },
   card: { backgroundColor: colours.white, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colours.line },
   head: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, alignItems: 'center' },

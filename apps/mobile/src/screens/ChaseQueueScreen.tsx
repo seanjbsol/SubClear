@@ -43,7 +43,7 @@ export function ChaseQueueScreen({ navigation }: Props) {
         method: 'POST',
         body: { note, outcome }
       });
-      Alert.alert('Chase logged', `Noted against ${name}. Email send is not automated in MVP.`);
+      Alert.alert('Chase logged', `Noted against ${name}.`);
       await load();
     } catch (err) {
       Alert.alert('Could not log chase', err instanceof Error ? err.message : 'Try again.');

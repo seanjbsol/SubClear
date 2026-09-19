@@ -45,6 +45,7 @@ public sealed class DashboardController : ControllerBase
             ExpiringWithin30Days = amber,
             CompliantCount = green,
             ChaseQueueCount = red + amber,
+            PendingReviewCount = subs.SelectMany(s => s.Documents).Count(d => d.ReviewStatus == DocumentReviewStatus.Pending),
             Attention = summaries
                 .Where(s => s.Compliance != ComplianceLight.Green)
                 .OrderBy(s => s.Compliance == ComplianceLight.Red ? 0 : 1)

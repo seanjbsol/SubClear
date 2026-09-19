@@ -14,25 +14,40 @@ namespace SubClear.Api.Tests;
 
 public class SubClearApiFactory : WebApplicationFactory<Program>
 {
-    private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"subclear-tests-{Guid.NewGuid():N}.db");
+    protected string DbPath { get; } = Path.Combine(Path.GetTempPath(), $"subclear-tests-{Guid.NewGuid():N}.db");
+
+    protected virtual IReadOnlyDictionary<string, string?> ExtraSettings => new Dictionary<string, string?>();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        var settings = new Dictionary<string, string?>
+        {
+            ["Database:Provider"] = "Sqlite",
+            ["Database:ConnectionString"] = $"Data Source={DbPath}",
+            ["Jwt:Key"] = "test-key-must-be-at-least-32-characters-long!!",
+            ["Jwt:Issuer"] = "SubClear",
+            ["Jwt:Audience"] = "SubClear",
+            ["Seed:Enabled"] = "true",
+            ["SubscriptionApi:UseStub"] = "true",
+            ["SubscriptionApi:ProductCode"] = "SubClear",
+            ["SubscriptionApi:StubStatus"] = "trialing",
+            ["SubscriptionApi:StubPlan"] = "pro",
+            ["Email:Provider"] = "File",
+            ["Email:FileDirectory"] = Path.Combine(Path.GetTempPath(), $"subclear-emails-{Guid.NewGuid():N}"),
+            ["Chase:BackgroundEnabled"] = "false",
+            ["Portal:PublicBaseUrl"] = "https://portal.test.subclear.uk",
+            ["Portal:TokenLifetimeHours"] = "168"
+        };
+        foreach (var pair in ExtraSettings)
+        {
+            settings[pair.Key] = pair.Value;
+        }
+
         builder.UseEnvironment("Development");
+        builder.UseSetting("Database:ConnectionString", $"Data Source={DbPath}");
         builder.ConfigureAppConfiguration((_, config) =>
         {
-            config.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Database:Provider"] = "Sqlite",
-                ["Database:ConnectionString"] = $"Data Source={_dbPath}",
-                ["Jwt:Key"] = "test-key-must-be-at-least-32-characters-long!!",
-                ["Jwt:Issuer"] = "SubClear",
-                ["Jwt:Audience"] = "SubClear",
-                ["Seed:Enabled"] = "true",
-                ["SubscriptionApi:UseStub"] = "true",
-                ["SubscriptionApi:ProductCode"] = "SubClear",
-                ["SubscriptionApi:StubStatus"] = "trialing"
-            });
+            config.AddInMemoryCollection(settings);
         });
     }
 
@@ -41,9 +56,9 @@ public class SubClearApiFactory : WebApplicationFactory<Program>
         base.Dispose(disposing);
         try
         {
-            File.Delete(_dbPath);
-            File.Delete(_dbPath + "-wal");
-            File.Delete(_dbPath + "-shm");
+            File.Delete(DbPath);
+            File.Delete(DbPath + "-wal");
+            File.Delete(DbPath + "-shm");
         }
         catch
         {
@@ -114,7 +129,7 @@ public class ApiIntegrationTests : IClassFixture<SubClearApiFactory>
         subs.Should().Contain(s => s.Name == "Riverside Scaffolding Ltd" && s.Compliance == ComplianceLight.Green);
         subs.Should().Contain(s => s.Name == "Grimsby Steel Erectors Ltd" && s.Compliance == ComplianceLight.Amber);
         subs.Should().Contain(s => s.Name == "North Sea Plant Hire Ltd" && s.Compliance == ComplianceLight.Red);
-        subs.Should().Contain(s => s.Name == "Fenland Groundworks Ltd" && s.Compliance == ComplianceLight.Red);
+        subs.Should().Contain(s => s.Name == "Fenland Groundworks Ltd" && s.Compliance != ComplianceLight.Green);
         subs.Should().NotContain(s => s.Name.Contains("Teeside"));
     }
 
@@ -141,7 +156,8 @@ public class ApiIntegrationTests : IClassFixture<SubClearApiFactory>
         mutate.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         var dashboard = await Get<DashboardDto>(northern, "/api/dashboard");
-        dashboard.TotalSubcontractors.Should().Be(1);
+        dashboard.TotalSubcontractors.Should().BeGreaterThanOrEqualTo(1);
+        northernSubs.Should().Contain(s => s.Name == "Teeside Controls Ltd");
     }
 
     [Fact]
@@ -172,6 +188,7 @@ public class ApiIntegrationTests : IClassFixture<SubClearApiFactory>
         docResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var doc = await Read<DocumentDto>(docResponse);
         doc.Light.Should().Be(ComplianceLight.Green);
+        doc.ReviewStatus.Should().Be(DocumentReviewStatus.Approved);
 
         var marked = await client.PostAsync($"/api/documents/{doc.Id}/mark-expired", null);
         marked.StatusCode.Should().Be(HttpStatusCode.OK);

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SubClear.Api.Auth;
+using SubClear.Api.Billing;
 using SubClear.Api.Contracts;
 using SubClear.Api.Data;
 using SubClear.Api.Domain;
@@ -55,8 +56,14 @@ public sealed class DocumentsController : ControllerBase
             TenantId = _tenant.TenantId,
             SubcontractorId = sub.Id,
             CreatedAt = now,
-            UpdatedAt = now
+            UpdatedAt = now,
+            ReviewStatus = AutoApprove(_tenant.Role) ? DocumentReviewStatus.Approved : DocumentReviewStatus.Pending
         };
+        if (doc.ReviewStatus == DocumentReviewStatus.Approved)
+        {
+            doc.ReviewedByUserId = _tenant.UserId;
+            doc.ReviewedAt = now;
+        }
         Apply(doc, request);
         _db.Documents.Add(doc);
         await _db.SaveChangesAsync(cancellationToken);
@@ -64,7 +71,10 @@ public sealed class DocumentsController : ControllerBase
     }
 
     private async Task<Subcontractor?> LoadSub(Guid id, CancellationToken cancellationToken) =>
-        await _db.Subcontractors.Include(s => s.Documents).FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+        await _db.Subcontractors.Include(s => s.Documents).ThenInclude(d => d.ReviewedBy).FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+
+    private static bool AutoApprove(MembershipRole role) =>
+        role is MembershipRole.Owner or MembershipRole.Admin or MembershipRole.Reviewer;
 
     private static void Apply(ComplianceDocument doc, DocumentWriteRequest request)
     {
@@ -113,6 +123,33 @@ public sealed class DocumentActionsController : ControllerBase
         doc.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
         doc.UpdatedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
+        return DtoMapper.ToDocument(doc, DateOnly.FromDateTime(DateTime.UtcNow));
+    }
+
+    [HttpPost("{id:guid}/review")]
+    [Authorize(Roles = RoleSets.Review)]
+    [RequireProFeature(ProFeature.ReviewQueue)]
+    public async Task<ActionResult<DocumentDto>> Review(Guid id, ReviewDocumentRequest request, CancellationToken cancellationToken)
+    {
+        if (request.Decision is not DocumentReviewStatus.Approved and not DocumentReviewStatus.Rejected)
+        {
+            return BadRequest(new { title = "Invalid decision", detail = "Decision must be approved or rejected." });
+        }
+
+        var doc = await _db.Documents.Include(d => d.ReviewedBy).FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        if (doc is null)
+        {
+            return NotFound();
+        }
+
+        TenantGuard.Ensure(doc.TenantId, _tenant.TenantId);
+        doc.ReviewStatus = request.Decision;
+        doc.ReviewComment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim();
+        doc.ReviewedByUserId = _tenant.UserId;
+        doc.ReviewedAt = DateTimeOffset.UtcNow;
+        doc.UpdatedAt = DateTimeOffset.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+        doc.ReviewedBy = await _db.Users.FirstAsync(u => u.Id == _tenant.UserId, cancellationToken);
         return DtoMapper.ToDocument(doc, DateOnly.FromDateTime(DateTime.UtcNow));
     }
 

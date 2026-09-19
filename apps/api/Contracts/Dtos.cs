@@ -67,6 +67,9 @@ public sealed class SubcontractorWriteRequest
     [MaxLength(20)]
     public string? CompanyNumber { get; set; }
 
+    [MaxLength(120)]
+    public string? Trade { get; set; }
+
     public SubcontractorStatus Status { get; set; } = SubcontractorStatus.Active;
 
     [MaxLength(4000)]
@@ -131,6 +134,10 @@ public sealed class DocumentDto
     public long? FileSizeBytes { get; set; }
     public string? Notes { get; set; }
     public bool IsManuallyExpired { get; set; }
+    public DocumentReviewStatus ReviewStatus { get; set; }
+    public string? ReviewComment { get; set; }
+    public string? ReviewedByName { get; set; }
+    public DateTimeOffset? ReviewedAt { get; set; }
     public ComplianceLight Light { get; set; }
 }
 
@@ -152,6 +159,7 @@ public sealed class ChaseLogDto
     public DateOnly ChaseDate { get; set; }
     public string Note { get; set; } = string.Empty;
     public ChaseOutcome Outcome { get; set; }
+    public bool IsAutomated { get; set; }
     public string CreatedByName { get; set; } = string.Empty;
     public DateTimeOffset CreatedAt { get; set; }
 }
@@ -177,6 +185,7 @@ public sealed class DashboardDto
     public int ExpiringWithin30Days { get; set; }
     public int CompliantCount { get; set; }
     public int ChaseQueueCount { get; set; }
+    public int PendingReviewCount { get; set; }
     public IReadOnlyList<SubcontractorSummaryDto> Attention { get; set; } = [];
 }
 
@@ -198,6 +207,8 @@ public sealed class PackItemDto
     public bool Missing { get; set; }
     public bool Expired { get; set; }
     public Guid? DocumentId { get; set; }
+    public DocumentReviewStatus? ReviewStatus { get; set; }
+    public string? ReviewComment { get; set; }
 }
 
 public sealed class ProjectWriteRequest
@@ -244,6 +255,11 @@ public sealed class EntitlementsDto
     public string? PlanName { get; set; }
     public DateTimeOffset? CurrentPeriodEnd { get; set; }
     public bool IsEntitled { get; set; }
+    public bool IsPro { get; set; }
+    public bool HasPortal { get; set; }
+    public bool HasEmailAutomation { get; set; }
+    public bool HasReviewQueue { get; set; }
+    public int? SubcontractorLimit { get; set; }
 }
 
 public sealed class BillingCheckoutRequest
@@ -265,4 +281,139 @@ public sealed class BillingSessionDto
 {
     public string Url { get; set; } = string.Empty;
     public string? SessionId { get; set; }
+}
+
+public sealed class CreatePortalInviteRequest
+{
+    [EmailAddress, MaxLength(320)]
+    public string? Email { get; set; }
+}
+
+public sealed class PortalInviteDto
+{
+    public Guid Id { get; set; }
+    public Guid SubcontractorId { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public DateTimeOffset ExpiresAt { get; set; }
+    public DateTimeOffset? RevokedAt { get; set; }
+    public DateTimeOffset? LastUsedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public string? PortalUrl { get; set; }
+    public string? Token { get; set; }
+}
+
+public sealed class PortalSessionDto
+{
+    public string OrganisationName { get; set; } = string.Empty;
+    public string SubcontractorName { get; set; } = string.Empty;
+    public string? ContactName { get; set; }
+    public DateTimeOffset ExpiresAt { get; set; }
+    public IReadOnlyList<PackItemDto> Items { get; set; } = [];
+}
+
+public sealed class ReviewDocumentRequest
+{
+    [Required]
+    public DocumentReviewStatus Decision { get; set; }
+
+    [MaxLength(4000)]
+    public string? Comment { get; set; }
+}
+
+public sealed class ReviewQueueItemDto
+{
+    public Guid DocumentId { get; set; }
+    public Guid SubcontractorId { get; set; }
+    public string SubcontractorName { get; set; } = string.Empty;
+    public DocumentType Type { get; set; }
+    public string TypeLabel { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public DateOnly? ExpiryDate { get; set; }
+    public string? FileName { get; set; }
+    public DocumentReviewStatus ReviewStatus { get; set; }
+    public DateTimeOffset SubmittedAt { get; set; }
+}
+
+public sealed class DirectoryListingDto
+{
+    public Guid Id { get; set; }
+    public string AnonymisedName { get; set; } = string.Empty;
+    public string Trade { get; set; } = string.Empty;
+    public string Region { get; set; } = string.Empty;
+    public DateTimeOffset VerifiedAt { get; set; }
+}
+
+public sealed class LinkRequestWriteRequest
+{
+    public Guid? NetworkListingId { get; set; }
+
+    [EmailAddress, MaxLength(320)]
+    public string? Email { get; set; }
+
+    [MaxLength(200)]
+    public string? Name { get; set; }
+
+    [MaxLength(200)]
+    public string? ContactName { get; set; }
+
+    [MaxLength(2000)]
+    public string? Message { get; set; }
+}
+
+public sealed class LinkRequestDto
+{
+    public Guid Id { get; set; }
+    public Guid? NetworkListingId { get; set; }
+    public Guid? SubcontractorId { get; set; }
+    public string? Email { get; set; }
+    public string? Message { get; set; }
+    public LinkRequestStatus Status { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public string? PortalUrl { get; set; }
+}
+
+public sealed class PublishToNetworkRequest
+{
+    [MaxLength(120)]
+    public string? Trade { get; set; }
+
+    [MaxLength(120)]
+    public string? Region { get; set; }
+}
+
+public sealed class ChaseSettingsDto
+{
+    public bool AutomationEnabled { get; set; }
+    public int CadenceDays { get; set; }
+    public DateTimeOffset? LastRunAt { get; set; }
+}
+
+public sealed class ChaseSettingsWriteRequest
+{
+    public bool AutomationEnabled { get; set; }
+
+    [Range(3, 28)]
+    public int CadenceDays { get; set; } = 7;
+}
+
+public sealed class ChaseJobResultDto
+{
+    public int TenantsConsidered { get; set; }
+    public int EmailsSent { get; set; }
+    public int SkippedNotDue { get; set; }
+    public int SkippedNoEmail { get; set; }
+    public int SkippedNotPro { get; set; }
+    public int SkippedDisabled { get; set; }
+}
+
+public sealed class EmailSendLogDto
+{
+    public Guid Id { get; set; }
+    public Guid? SubcontractorId { get; set; }
+    public string? SubcontractorName { get; set; }
+    public EmailKind Kind { get; set; }
+    public string ToAddress { get; set; } = string.Empty;
+    public string Subject { get; set; } = string.Empty;
+    public DateTimeOffset SentAt { get; set; }
+    public string Provider { get; set; } = string.Empty;
 }

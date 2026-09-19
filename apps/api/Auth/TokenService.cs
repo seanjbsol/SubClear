@@ -69,4 +69,5 @@ public static class RoleSets
 {
     public const string Write = "Owner,Admin,ContractsManager";
     public const string Admin = "Owner,Admin";
+    public const string Review = "Owner,Admin,Reviewer";
 }

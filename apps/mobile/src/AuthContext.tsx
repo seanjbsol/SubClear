@@ -1,12 +1,14 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api, getStoredToken, loginRequest, registerRequest, storeToken } from './api';
-import type { MeResponse } from './types';
+import type { EntitlementsDto, MeResponse } from './types';
 
 type AuthContextValue = {
   token: string | null;
   user: MeResponse | null;
   ready: boolean;
   canWrite: boolean;
+  canReview: boolean;
+  entitlements: EntitlementsDto | null;
   login: (email: string, password: string) => Promise<void>;
   register: (input: {
     organisationName: string;
@@ -24,20 +26,30 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<MeResponse | null>(null);
+  const [entitlements, setEntitlements] = useState<EntitlementsDto | null>(null);
   const [ready, setReady] = useState(false);
+
+  const loadEntitlements = useCallback(async (nextToken: string) => {
+    try {
+      setEntitlements(await api<EntitlementsDto>('/api/billing/entitlements', { token: nextToken }));
+    } catch {
+      setEntitlements(null);
+    }
+  }, []);
 
   const applyAuth = useCallback(async (nextToken: string, nextUser?: MeResponse) => {
     await storeToken(nextToken);
     setToken(nextToken);
     if (nextUser) {
       setUser(nextUser);
-      return;
+    } else {
+      const me = await api<MeResponse>('/api/me', { token: nextToken });
+      setUser(me);
     }
-    const me = await api<MeResponse>('/api/me', { token: nextToken });
-    setUser(me);
-  }, []);
+    await loadEntitlements(nextToken);
+  }, [loadEntitlements]);
 
-  useEffect(() => {
+    useEffect(() => {
     let cancelled = false;
     (async () => {
       const stored = await getStoredToken();
@@ -53,6 +65,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setToken(stored);
           setUser(me);
         }
+        if (!cancelled) {
+          await loadEntitlements(stored);
+        }
       } catch {
         await storeToken(null);
       } finally {
@@ -64,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadEntitlements]);
 
   const login = useCallback(
     async (email: string, password: string) => {
@@ -92,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await storeToken(null);
     setToken(null);
     setUser(null);
+    setEntitlements(null);
   }, []);
 
   const request = useCallback(
@@ -118,12 +134,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       ready,
       canWrite: user?.role === 'owner' || user?.role === 'admin' || user?.role === 'contractsManager',
+      canReview: user?.role === 'owner' || user?.role === 'admin' || user?.role === 'reviewer',
+      entitlements,
       login,
       register,
       logout,
       request
     }),
-    [token, user, ready, login, register, logout, request]
+    [token, user, ready, entitlements, login, register, logout, request]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

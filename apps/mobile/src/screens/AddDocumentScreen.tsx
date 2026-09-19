@@ -42,7 +42,7 @@ export function AddDocumentScreen({ navigation, route }: Props) {
 
   return (
     <ScrollView style={styles.flex} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <Text style={styles.lede}>File bytes stay in your document store later. MVP records type, expiry and file metadata.</Text>
+      <Text style={styles.lede}>File bytes can be uploaded through the subcontractor portal. Staff can still record type, expiry and file metadata here. Owner, Admin and Reviewer uploads are auto-approved; other uploads go to the review queue.</Text>
       <Text style={styles.label}>Type</Text>
       <Picker selectedValue={type} onValueChange={setType} style={styles.picker}>
         {documentTypes.map((item) => (

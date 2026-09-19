@@ -26,9 +26,9 @@ artifacts/
 *.db-wal
 *.sqlite
 *.sqlite3
+apps/api/emails/
+emails/
 App_Data/
-apps/api/uploads/
-apps/api/subclear.dev.db*
 
 # Secrets & env
 .env

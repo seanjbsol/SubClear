@@ -12,6 +12,9 @@ public interface ITenantContext
     bool IsAuthenticated { get; }
 
     void Set(Guid tenantId, Guid userId, MembershipRole role, string email, string fullName);
+
+    /// <summary>Binds a tenant for anonymous portal or background jobs (no signed-in user).</summary>
+    void SetTenant(Guid tenantId);
 }
 
 public sealed class TenantContext : ITenantContext
@@ -31,6 +34,15 @@ public sealed class TenantContext : ITenantContext
         Email = email;
         FullName = fullName;
     }
+
+    public void SetTenant(Guid tenantId)
+    {
+        TenantId = tenantId;
+        UserId = Guid.Empty;
+        Role = MembershipRole.Viewer;
+        Email = string.Empty;
+        FullName = string.Empty;
+    }
 }
 
 public sealed class DesignTimeTenantContext : ITenantContext
@@ -43,6 +55,11 @@ public sealed class DesignTimeTenantContext : ITenantContext
     public bool IsAuthenticated => false;
 
     public void Set(Guid tenantId, Guid userId, MembershipRole role, string email, string fullName)
+    {
+        // Design-time / migration factory never authenticates a tenant.
+    }
+
+    public void SetTenant(Guid tenantId)
     {
         // Design-time / migration factory never authenticates a tenant.
     }

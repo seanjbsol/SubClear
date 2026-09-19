@@ -12,12 +12,15 @@ import { SubcontractorDetailScreen } from './src/screens/SubcontractorDetailScre
 import { AddSubcontractorScreen } from './src/screens/AddSubcontractorScreen';
 import { AddDocumentScreen } from './src/screens/AddDocumentScreen';
 import { ChaseQueueScreen } from './src/screens/ChaseQueueScreen';
+import { ReviewQueueScreen } from './src/screens/ReviewQueueScreen';
+import { DirectoryScreen } from './src/screens/DirectoryScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { colours } from './src/theme';
 import type {
   AuthStackParamList,
   ChaseStackParamList,
   HomeStackParamList,
+  ReviewStackParamList,
   SubsStackParamList
 } from './src/navigationTypes';
 
@@ -25,6 +28,7 @@ const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
 const SubsStack = createNativeStackNavigator<SubsStackParamList>();
 const ChaseStack = createNativeStackNavigator<ChaseStackParamList>();
+const ReviewStack = createNativeStackNavigator<ReviewStackParamList>();
 const Tabs = createBottomTabNavigator();
 
 const navTheme = {
@@ -67,6 +71,7 @@ function SubsNavigator() {
         options={({ route }) => ({ title: route.params.name })}
       />
       <SubsStack.Screen name="AddSubcontractor" component={AddSubcontractorScreen} options={{ title: 'Add subcontractor' }} />
+      <SubsStack.Screen name="Directory" component={DirectoryScreen} options={{ title: 'SubClear network' }} />
       <SubsStack.Screen
         name="AddDocument"
         component={AddDocumentScreen}
@@ -94,6 +99,24 @@ function ChaseNavigator() {
   );
 }
 
+function ReviewNavigator() {
+  return (
+    <ReviewStack.Navigator screenOptions={stackOptions}>
+      <ReviewStack.Screen name="ReviewQueue" component={ReviewQueueScreen} options={{ title: 'Review queue' }} />
+      <ReviewStack.Screen
+        name="SubcontractorDetail"
+        component={SubcontractorDetailScreen}
+        options={({ route }) => ({ title: route.params.name })}
+      />
+      <ReviewStack.Screen
+        name="AddDocument"
+        component={AddDocumentScreen}
+        options={({ route }) => ({ title: `Document · ${route.params.name}` })}
+      />
+    </ReviewStack.Navigator>
+  );
+}
+
 const stackOptions = {
   headerStyle: { backgroundColor: colours.navy },
   headerTintColor: colours.white,
@@ -116,6 +139,7 @@ function SignedInTabs() {
       <Tabs.Screen name="HomeTab" component={HomeNavigator} options={{ title: 'Home' }} />
       <Tabs.Screen name="SubsTab" component={SubsNavigator} options={{ title: 'Subs' }} />
       <Tabs.Screen name="ChaseTab" component={ChaseNavigator} options={{ title: 'Chase' }} />
+      <Tabs.Screen name="ReviewTab" component={ReviewNavigator} options={{ title: 'Review' }} />
       <Tabs.Screen name="SettingsTab" component={SettingsScreen} options={{ title: 'Settings', headerShown: true, ...stackOptions }} />
     </Tabs.Navigator>
   );

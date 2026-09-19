@@ -13,12 +13,8 @@ type RequestOptions = {
 
 function problemMessage(payload: unknown, fallback: string): string {
   if (payload && typeof payload === 'object') {
-    const record = payload as { detail?: string; title?: string; message?: string; checkoutHint?: string };
-    const base = record.detail || record.title || record.message || fallback;
-    if (record.checkoutHint) {
-      return `${base} (${record.checkoutHint})`;
-    }
-    return base;
+    const record = payload as { detail?: string; title?: string; message?: string };
+    return record.detail || record.title || record.message || fallback;
   }
   return fallback;
 }

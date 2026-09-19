@@ -181,12 +181,12 @@ public sealed class SubscriptionClient : ISubscriptionClient
         var planName = ReadString(source, "planName", "planDisplayName", "name");
         DateTimeOffset? periodEnd = null;
         var periodRaw = ReadString(source, "currentPeriodEnd", "periodEnd", "renewsAt");
-        if (DateTimeOffset.TryParse(periodRaw, out var parsed))
+        if (DateTimeOffset.TryParse(periodRaw, out var parsedEnd))
         {
-            periodEnd = parsed;
+            periodEnd = parsedEnd;
         }
 
-        return new EntitlementsResult
+        var entitlements = new EntitlementsResult
         {
             ProductCode = ReadString(source, "productCode") ?? _options.ProductCode,
             TenantId = tenantId,
@@ -195,6 +195,7 @@ public sealed class SubscriptionClient : ISubscriptionClient
             PlanName = planName,
             CurrentPeriodEnd = periodEnd
         };
+        return PlanFeatures.WithLimits(entitlements, _options);
     }
 
     private static string? ReadString(JsonElement element, params string[] names)

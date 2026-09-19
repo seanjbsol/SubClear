@@ -44,6 +44,14 @@ public class ComplianceCalculatorTests
     }
 
     [Fact]
+    public void Rejected_required_document_is_treated_as_missing()
+    {
+        var docs = Pack(Today.AddMonths(6));
+        docs.First(d => d.Type == DocumentType.Ssip).ReviewStatus = DocumentReviewStatus.Rejected;
+        ComplianceCalculator.ForSubcontractor(docs, Today).Should().Be(ComplianceLight.Red);
+    }
+
+    [Fact]
     public void Expiry_today_is_amber_not_red()
     {
         var docs = Pack(Today.AddMonths(6), ssip: Today);
@@ -73,6 +81,7 @@ public class ComplianceCalculatorTests
         Id = Guid.NewGuid(),
         Type = type,
         Title = type.ToString(),
-        ExpiryDate = expiry
+        ExpiryDate = expiry,
+        ReviewStatus = DocumentReviewStatus.Approved
     };
 }

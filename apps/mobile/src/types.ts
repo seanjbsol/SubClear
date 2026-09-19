@@ -1,4 +1,4 @@
-export type MembershipRole = 'owner' | 'admin' | 'contractsManager' | 'viewer';
+export type MembershipRole = 'owner' | 'admin' | 'contractsManager' | 'viewer' | 'reviewer';
 export type ComplianceLight = 'green' | 'amber' | 'red';
 export type SubcontractorStatus = 'active' | 'onHold' | 'inactive';
 export type DocumentType =
@@ -61,6 +61,10 @@ export type DocumentDto = {
   fileSizeBytes?: number | null;
   notes?: string | null;
   isManuallyExpired: boolean;
+  reviewStatus: 'pending' | 'approved' | 'rejected';
+  reviewComment?: string | null;
+  reviewedByName?: string | null;
+  reviewedAt?: string | null;
   light: ComplianceLight;
 };
 
@@ -71,6 +75,7 @@ export type ChaseLogDto = {
   chaseDate: string;
   note: string;
   outcome: ChaseOutcome;
+  isAutomated: boolean;
   createdByName: string;
   createdAt: string;
 };
@@ -86,6 +91,7 @@ export type DashboardDto = {
   expiringWithin30Days: number;
   compliantCount: number;
   chaseQueueCount: number;
+  pendingReviewCount: number;
   attention: SubcontractorSummary[];
 };
 
@@ -111,6 +117,8 @@ export type PackItem = {
   missing: boolean;
   expired: boolean;
   documentId?: string | null;
+  reviewStatus?: 'pending' | 'approved' | 'rejected' | null;
+  reviewComment?: string | null;
 };
 
 export type PackDto = {
@@ -128,6 +136,68 @@ export type EntitlementsDto = {
   planName?: string | null;
   currentPeriodEnd?: string | null;
   isEntitled: boolean;
+  isPro: boolean;
+  hasPortal: boolean;
+  hasEmailAutomation: boolean;
+  hasReviewQueue: boolean;
+  subcontractorLimit?: number | null;
+};
+
+export type PortalInviteDto = {
+  id: string;
+  subcontractorId: string;
+  email: string;
+  expiresAt: string;
+  portalUrl?: string | null;
+  token?: string | null;
+};
+
+export type ReviewQueueItem = {
+  documentId: string;
+  subcontractorId: string;
+  subcontractorName: string;
+  type: DocumentType;
+  typeLabel: string;
+  title: string;
+  expiryDate?: string | null;
+  fileName?: string | null;
+  reviewStatus: 'pending' | 'approved' | 'rejected';
+  submittedAt: string;
+};
+
+export type DirectoryListing = {
+  id: string;
+  anonymisedName: string;
+  trade: string;
+  region: string;
+  verifiedAt: string;
+};
+
+export type LinkRequestDto = {
+  id: string;
+  networkListingId?: string | null;
+  subcontractorId?: string | null;
+  email?: string | null;
+  status: 'pending' | 'accepted' | 'declined';
+  createdAt: string;
+  portalUrl?: string | null;
+};
+
+export type ChaseSettingsDto = {
+  automationEnabled: boolean;
+  cadenceDays: number;
+  lastRunAt?: string | null;
+};
+
+export type EmailSendLogDto = {
+  id: string;
+  subcontractorId?: string | null;
+  subcontractorName?: string | null;
+  kind: 'portalInvite' | 'documentChase' | 'linkRequest';
+  toAddress: string;
+  subject: string;
+  sentAt: string;
+  provider: string;
 };
 
 export type BillingSessionDto = {

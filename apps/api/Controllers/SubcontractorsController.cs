@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SubClear.Api.Auth;
+using SubClear.Api.Billing;
 using SubClear.Api.Contracts;
 using SubClear.Api.Data;
 using SubClear.Api.Domain;
@@ -17,11 +18,13 @@ public sealed class SubcontractorsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ITenantContext _tenant;
+    private readonly ISubscriptionClient _subscriptions;
 
-    public SubcontractorsController(AppDbContext db, ITenantContext tenant)
+    public SubcontractorsController(AppDbContext db, ITenantContext tenant, ISubscriptionClient subscriptions)
     {
         _db = db;
         _tenant = tenant;
+        _subscriptions = subscriptions;
     }
 
     [HttpGet]
@@ -73,6 +76,18 @@ public sealed class SubcontractorsController : ControllerBase
     [Authorize(Roles = RoleSets.Write)]
     public async Task<ActionResult<SubcontractorSummaryDto>> Create(SubcontractorWriteRequest request, CancellationToken cancellationToken)
     {
+        var entitlements = await _subscriptions.GetEntitlementsAsync(_tenant.TenantId, cancellationToken);
+        if (entitlements.SubcontractorLimit is { } limit)
+        {
+            var count = await _db.Subcontractors.CountAsync(cancellationToken);
+            if (count >= limit)
+            {
+                return BillingProblems.UpgradeRequired(
+                    $"Starter includes up to {limit} subcontractors. Upgrade to Pro for an unlimited register.",
+                    "subcontractorLimit");
+            }
+        }
+
         var now = DateTimeOffset.UtcNow;
         var sub = new Subcontractor
         {
@@ -136,6 +151,7 @@ public sealed class SubcontractorsController : ControllerBase
     private IQueryable<Subcontractor> QueryWithGraph() =>
         _db.Subcontractors
             .Include(s => s.Documents)
+            .ThenInclude(d => d.ReviewedBy)
             .Include(s => s.ChaseLogs)
             .ThenInclude(c => c.CreatedBy)
             .AsSplitQuery();
@@ -148,6 +164,7 @@ public sealed class SubcontractorsController : ControllerBase
         sub.Email = TrimToNull(request.Email)?.ToLowerInvariant();
         sub.Phone = TrimToNull(request.Phone);
         sub.CompanyNumber = TrimToNull(request.CompanyNumber);
+        sub.Trade = TrimToNull(request.Trade);
         sub.Status = request.Status;
         sub.Notes = TrimToNull(request.Notes);
     }

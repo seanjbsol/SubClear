@@ -14,10 +14,17 @@ export type SubsStackParamList = {
   SubcontractorDetail: { id: string; name: string };
   AddSubcontractor: undefined;
   AddDocument: { subcontractorId: string; name: string };
+  Directory: undefined;
 };
 
 export type ChaseStackParamList = {
   ChaseQueue: undefined;
+  SubcontractorDetail: { id: string; name: string };
+  AddDocument: { subcontractorId: string; name: string };
+};
+
+export type ReviewStackParamList = {
+  ReviewQueue: undefined;
   SubcontractorDetail: { id: string; name: string };
   AddDocument: { subcontractorId: string; name: string };
 };

@@ -29,6 +29,11 @@ public sealed class AppDbContext : DbContext
     public DbSet<ChaseLog> ChaseLogs => Set<ChaseLog>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectSubcontractor> ProjectSubcontractors => Set<ProjectSubcontractor>();
+    public DbSet<TenantSettings> TenantSettings => Set<TenantSettings>();
+    public DbSet<PortalInvite> PortalInvites => Set<PortalInvite>();
+    public DbSet<EmailSendLog> EmailSendLogs => Set<EmailSendLog>();
+    public DbSet<NetworkListing> NetworkListings => Set<NetworkListing>();
+    public DbSet<LinkRequest> LinkRequests => Set<LinkRequest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -69,9 +74,12 @@ public sealed class AppDbContext : DbContext
             entity.Property(e => e.Phone).HasMaxLength(40);
             entity.Property(e => e.CompanyNumber).HasMaxLength(20);
             entity.Property(e => e.Notes).HasMaxLength(4000);
+            entity.Property(e => e.Trade).HasMaxLength(120);
             entity.HasIndex(e => new { e.TenantId, e.Name });
+            entity.HasIndex(e => new { e.TenantId, e.NetworkListingId });
             entity.HasQueryFilter(e => e.TenantId == CurrentTenantId);
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId);
+            entity.HasOne(e => e.NetworkListing).WithMany().HasForeignKey(e => e.NetworkListingId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<ComplianceDocument>(entity =>
@@ -83,12 +91,18 @@ public sealed class AppDbContext : DbContext
             entity.Property(e => e.ContentType).HasMaxLength(200);
             entity.Property(e => e.StorageKey).HasMaxLength(500);
             entity.Property(e => e.Notes).HasMaxLength(4000);
+            entity.Property(e => e.ReviewComment).HasMaxLength(4000);
             entity.HasIndex(e => new { e.TenantId, e.SubcontractorId, e.Type });
+            entity.HasIndex(e => new { e.TenantId, e.ReviewStatus });
             entity.HasQueryFilter(e => e.TenantId == CurrentTenantId);
             entity.HasOne(e => e.Subcontractor)
                 .WithMany(s => s.Documents)
                 .HasForeignKey(e => e.SubcontractorId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ReviewedBy)
+                .WithMany()
+                .HasForeignKey(e => e.ReviewedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<ChaseLog>(entity =>
@@ -130,6 +144,72 @@ public sealed class AppDbContext : DbContext
                 .WithMany(s => s.ProjectLinks)
                 .HasForeignKey(e => e.SubcontractorId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TenantSettings>(entity =>
+        {
+            entity.HasKey(e => e.TenantId);
+            entity.HasQueryFilter(e => e.TenantId == CurrentTenantId);
+            entity.HasOne(e => e.Tenant).WithOne(t => t.Settings).HasForeignKey<TenantSettings>(e => e.TenantId);
+        });
+
+        modelBuilder.Entity<PortalInvite>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Email).HasMaxLength(320).IsRequired();
+            entity.Property(e => e.TokenHash).HasMaxLength(64).IsRequired();
+            entity.HasIndex(e => e.TokenHash).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.SubcontractorId, e.ExpiresAt });
+            entity.HasQueryFilter(e => e.TenantId == CurrentTenantId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId);
+            entity.HasOne(e => e.Subcontractor)
+                .WithMany(s => s.PortalInvites)
+                .HasForeignKey(e => e.SubcontractorId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.CreatedBy)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<EmailSendLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ToAddress).HasMaxLength(320).IsRequired();
+            entity.Property(e => e.Subject).HasMaxLength(300).IsRequired();
+            entity.Property(e => e.Body).HasMaxLength(8000).IsRequired();
+            entity.Property(e => e.Provider).HasMaxLength(40).IsRequired();
+            entity.HasIndex(e => new { e.TenantId, e.SentAt });
+            entity.HasQueryFilter(e => e.TenantId == CurrentTenantId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId);
+            entity.HasOne(e => e.Subcontractor)
+                .WithMany()
+                .HasForeignKey(e => e.SubcontractorId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<NetworkListing>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.AnonymisedName).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Trade).HasMaxLength(120).IsRequired();
+            entity.Property(e => e.Region).HasMaxLength(120).IsRequired();
+            entity.Property(e => e.CompanyNumberHash).HasMaxLength(64);
+            entity.HasIndex(e => new { e.Trade, e.Region });
+            entity.HasIndex(e => e.SourceSubcontractorId).IsUnique();
+        });
+
+        modelBuilder.Entity<LinkRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Email).HasMaxLength(320);
+            entity.Property(e => e.Message).HasMaxLength(2000);
+            entity.HasIndex(e => new { e.TenantId, e.CreatedAt });
+            entity.HasQueryFilter(e => e.TenantId == CurrentTenantId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId);
+            entity.HasOne(e => e.NetworkListing).WithMany().HasForeignKey(e => e.NetworkListingId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Subcontractor).WithMany().HasForeignKey(e => e.SubcontractorId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 
